@@ -1,0 +1,141 @@
+name: AI Code Review
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get Changed Files
+        id: changed-files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            FILES=$(git diff --name-only origin/main...HEAD | grep '\.java$' | xargs || true)
+          else
+            FILES=$(git diff --name-only HEAD~1 HEAD | grep '\.java$' | xargs || true)
+          fi
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
+      - name: Claude AI Review
+        if: steps.changed-files.outputs.files != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_FILES: ${{ steps.changed-files.outputs.files }}
+        run: |
+          CONTEXT=""
+          for file in $PR_FILES; do
+            if [ -f "$file" ]; then
+              CONTENT=$(cat "$file")
+              CONTEXT="$CONTEXT\n\n--- FILE: $file ---\n$CONTENT"
+            fi
+          done
+
+          PROMPT="You are a senior Java developer reviewing a student's OOP assignment.
+
+          TASK DESCRIPTION (from README):
+          The student had to implement a Notification System with Email, SMS, and Push notifications, including validation, sorting, and state management.
+
+          Requirements:
+          1. Base Validation (Notification constructor):
+             - Recipient not empty/blank.
+             - Message not null.
+             - Priority between 1 and 5.
+             - Throw InvalidNotificationException if fails.
+
+          2. Notification logic:
+             - isHighPriority(): priority >= 4.
+             - compareTo(): sorting by priority descending.
+             - send(): Template Method checking isDeliverable(), updating status (SENT/FAILED), and calling performSend().
+
+          3. Subclasses:
+             - EmailNotification: isDeliverable (@ and .), isSpam (free/win/click in subject), format: Subject: {subject}\n{message}.
+             - SmsNotification: isDeliverable (+ prefix, 10-15 chars), isOverLimit (>160), format: truncated to 160.
+             - PushNotification: isDeliverable (token length > 10), isSilent (message empty), format: 🔔 {message}.
+
+          4. Exceptions:
+             - InvalidNotificationException for validation.
+             - NotDeliverableException for delivery failures.
+
+          REVIEW the student's implementation and provide feedback in this structure:
+
+          ✅ WHAT IS DONE WELL:
+          - List specific things the student implemented correctly
+          - Mention good practices they followed
+
+          ⚠️ WHAT CAN BE IMPROVED:
+          - List concrete issues or missed requirements
+          - For each issue, provide a short example of how to fix it, like:
+
+            Instead of:
+            \`\`\`java
+            private String testName; // redeclared field
+            \`\`\`
+            Do this:
+            \`\`\`java
+            super(testName, status, duration); // use inherited field via super()
+            \`\`\`
+
+          Keep feedback constructive, specific, and beginner-friendly.
+
+          Student's code:
+          $CONTEXT"
+
+          ESCAPED_PROMPT=$(echo "$PROMPT" | python3 -c 'import json, sys; print(json.dumps(sys.stdin.read()))')
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"model\": \"claude-haiku-4-5-20251001\",
+              \"max_tokens\": 1024,
+              \"messages\": [{\"role\": \"user\", \"content\": $ESCAPED_PROMPT}]
+            }")
+
+          REVIEW_COMMENT=$(echo "$RESPONSE" | python3 -c '
+          import json, sys
+          res = json.load(sys.stdin)
+          if "content" in res and len(res["content"]) > 0 and "text" in res["content"][0]:
+              print(res["content"][0]["text"])
+          else:
+              print("Error: " + json.dumps(res))
+          ')
+
+          echo "$REVIEW_COMMENT" > review.txt
+
+      - name: Post Comment
+        if: success() && steps.changed-files.outputs.files != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('review.txt', 'utf8');
+            const body = "### 🤖 Claude AI Code Review\n\n" + comment;
+
+            if (context.eventName === 'pull_request') {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } else {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body: body
+              });
+            }
