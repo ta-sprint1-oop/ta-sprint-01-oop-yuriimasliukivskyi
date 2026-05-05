@@ -18,9 +18,13 @@ public class EmailNotification extends Notification {
 
     @Override
     public boolean isDeliverable() {
-        return getRecipient() != null && 
-           getRecipient().contains("@") && 
-           getRecipient().contains(".");
+        if (getRecipient() == null || getRecipient().isBlank()) {
+            return false;
+        }
+        String email = getRecipient();
+        return email.contains("@") && 
+            email.contains(".") && 
+            email.indexOf("@") < email.lastIndexOf(".");
     }
 
     public boolean isSpam() {
@@ -32,7 +36,8 @@ public class EmailNotification extends Notification {
 
     @Override
     public String getFormattedMessage() {
-        return "Subject: " + subject + "\n" + message;
+        String subjectText = (subject != null) ? subject : "[No Subject]";
+        return "Subject: " + subjectText + "\n" + getMessage();
     }
 
     @Override
@@ -41,9 +46,13 @@ public class EmailNotification extends Notification {
     }
 
     @Override
-    protected void performSend() {
+    protected void performSend() throws NotDeliverableException {
+        if (isSpam()) {
+            throw new NotDeliverableException("Email is detected as spam");
+        }
+
         System.out.println("Sending EMAIL to " + recipient + ": " + getFormattedMessage());
-}
+    }
 
     public String getSenderEmail() { return senderEmail; }
     public String getSubject() { return subject; }

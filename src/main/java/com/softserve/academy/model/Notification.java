@@ -46,7 +46,7 @@ public abstract class Notification implements Comparable<Notification> {
     status = NotificationStatus.SENT;
     }
 
-    protected abstract void performSend();
+    protected abstract void performSend() throws NotDeliverableException;
 
     @Override
     public int compareTo(Notification other) {
