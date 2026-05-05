@@ -18,7 +18,7 @@ public class PushNotification extends Notification {
     }
 
     public boolean isSilent() {
-        return message == null || message.isBlank();
+        return message.isBlank();
     }
 
     @Override

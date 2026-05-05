@@ -38,15 +38,15 @@ public abstract class Notification implements Comparable<Notification> {
 
     public void send() throws NotDeliverableException {
             if (!isDeliverable()) {
-            status = NotificationStatus.FAILED;
-            throw new NotDeliverableException("Notification is not deliverable");
-        }
-
-        performSend();
-        status = NotificationStatus.SENT;
+        status = NotificationStatus.FAILED;
+        throw new NotDeliverableException("Notification is not deliverable");
     }
 
-    protected abstract void performSend() throws NotDeliverableException;
+    performSend(); 
+    status = NotificationStatus.SENT;
+    }
+
+    protected abstract void performSend();
 
     @Override
     public int compareTo(Notification other) {

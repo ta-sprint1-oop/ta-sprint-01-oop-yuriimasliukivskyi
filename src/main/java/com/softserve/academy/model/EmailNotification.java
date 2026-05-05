@@ -2,8 +2,6 @@ package com.softserve.academy.model;
 
 import com.softserve.academy.exception.NotDeliverableException;
 
-import java.util.List;
-
 public class EmailNotification extends Notification {
     private String senderEmail;
     private String subject;
@@ -18,7 +16,9 @@ public class EmailNotification extends Notification {
 
     @Override
     public boolean isDeliverable() {
-        return recipient != null && recipient.contains("@") && recipient.contains(".");
+        return getRecipient() != null && 
+           getRecipient().contains("@") && 
+           getRecipient().contains(".");
     }
 
     public boolean isSpam() {
@@ -41,7 +41,7 @@ public class EmailNotification extends Notification {
     @Override
     protected void performSend() {
         System.out.println("Sending EMAIL to " + recipient + ": " + getFormattedMessage());
-    }
+}
 
     public String getSenderEmail() { return senderEmail; }
     public String getSubject() { return subject; }

@@ -14,10 +14,10 @@ public class SmsNotification extends Notification {
 
     @Override
     public boolean isDeliverable() {
-        return phoneNumber != null && 
-        phoneNumber.startsWith("+") && 
-        phoneNumber.length() >= 10 && 
-        phoneNumber.length() <= 15;
+        return recipient != null && 
+        recipient.startsWith("+") && 
+        recipient.length() >= 10 && 
+        recipient.length() <= 15;
     }
 
     public boolean isOverLimit() {
@@ -41,7 +41,7 @@ public class SmsNotification extends Notification {
 
     @Override
     protected void performSend() {
-        System.out.println("Sending SMS to " + phoneNumber + ": " + getFormattedMessage());
+        System.out.println("Sending SMS to " + recipient + ": " + getFormattedMessage());
     }
 
     public String getPhoneNumber() { return phoneNumber; }
