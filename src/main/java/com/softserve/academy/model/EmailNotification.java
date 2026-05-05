@@ -2,6 +2,8 @@ package com.softserve.academy.model;
 
 import com.softserve.academy.exception.NotDeliverableException;
 
+import java.util.List;
+
 public class EmailNotification extends Notification {
     private String senderEmail;
     private String subject;
