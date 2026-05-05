@@ -8,35 +8,40 @@ public class SmsNotification extends Notification {
 
     public SmsNotification(String recipient, String message, int priority, String phoneNumber, boolean isFlash) {
         super(recipient, message, priority);
-        // TODO: Ініціалізація додаткових полів
+        this.phoneNumber = phoneNumber;
+        this.isFlash = isFlash;
     }
 
     @Override
     public boolean isDeliverable() {
-        // TODO: Номер починається з + і має довжину 10-15 символів
-        return false;
+        return phoneNumber != null && 
+        phoneNumber.startsWith("+") && 
+        phoneNumber.length() >= 10 && 
+        phoneNumber.length() <= 15;
     }
 
     public boolean isOverLimit() {
-        // TODO: true якщо message > 160 символів
-        return false;
+        return message != null && message.length() > 160;
     }
 
     @Override
     public String getFormattedMessage() {
-        // TODO: Обрізає до 160 символів якщо довше
-        return null;
+        if (message == null) return "";
+
+        if (message.length() > 160) {
+            return message.substring(0, 160);
+        }
+        return message;
     }
 
     @Override
     public int estimateDeliverySeconds() {
-        // TODO: 5
-        return 0;
+        return 5;
     }
 
     @Override
     protected void performSend() {
-        // TODO: Симуляція відправки (println)
+        System.out.println("Sending SMS to " + phoneNumber + ": " + getFormattedMessage());
     }
 
     public String getPhoneNumber() { return phoneNumber; }
